@@ -98,7 +98,6 @@ extend(SoundTouch.prototype, {
     },
 
     _calculateEffectiveRateAndTempo: function () {
-        console.log("calculating");
         var previousTempo = this._tempo;
         var previousRate = this._rate;
 
@@ -144,11 +143,12 @@ extend(SoundTouch.prototype, {
     }
 });
 
-function WebAudioBufferSource(buffer) {
-    this.buffer = buffer;
-}
-WebAudioBufferSource.prototype = {
-    extract: function(target, numFrames, position) {
+class WebAudioBufferSource {
+    constructor(buffer) {
+        this.buffer = buffer;
+    }
+
+    extract(target, numFrames, position) {
         var l = this.buffer.getChannelData(0);
         var r;
         if (buffer.numberOfChannels > 1) r = this.buffer.getChannelData(1);
@@ -158,7 +158,7 @@ WebAudioBufferSource.prototype = {
         }
         return Math.min(numFrames, l.length - position);
     }
-};
+}
 
 function getWebAudioNode(context, filter, bufSize) {
     var BUFFER_SIZE = bufSize || 1024;

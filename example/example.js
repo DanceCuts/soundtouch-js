@@ -1,47 +1,59 @@
-//AC polyfill
-window.AudioContext = window.AudioContext ||
-  window.webkitAudioContext ||
-  window.mozAudioContext ||
-  window.oAudioContext ||
-  window.msAudioContext
-
-var context = new webkitAudioContext();
-
-var pitchshifter, buffer;
-
-//GET AUDIO FILE
-var request = new XMLHttpRequest();
-request.open('GET', 'sound1.wav', true);
-request.responseType = 'arraybuffer';
-
-request.onload = function() {
-    console.log('url loaded');
-    context.decodeAudioData(request.response, function(buf) {
-        //we now have the audio data
-        buffer = buf;
-        console.log('decoded');
-        pitchshifter = new PitchShifter(context, buffer, 1024);
-        pitchshifter.tempo = 0.75;
-    });
-}
-
-console.log('reading url');
-request.send();
+const context = new AudioContext();
+let pitchshifter, buffer; //buffer must remain a global variable so it doesn't get deleted
 
 //PLAYBACK
 function play() {
+    console.log("Playing...");
     pitchshifter.connect(context.destination);
-    console.log("play")
 }
 
 function pause() {
+    console.log("Paused");
     pitchshifter.disconnect();
 }
 
-document.getElementById('tempoSlider').addEventListener('input', function(){
-    pitchshifter.tempo = this.value;
+//this "checkAudioState" trick is from the wavesurfer.js library
+function checkAudioState() {
+    if (context.state === "suspended") {
+        console.log("AudioContext's state is SUSPENDED, attempting to resume...");
+        context.resume();
+    }
+    else if (context.state === "running") {
+        console.log("Captured AudioContext!");
+        window.removeEventListener("click", checkAudioState);
+        window.removeEventListener("touchstart", checkAudioState);
+        window.removeEventListener("touchend", checkAudioState);
+    }
+    else {
+        console.log("WARNING unknown AudioContext state: ", context.state);
+    }
+}
+window.addEventListener("click", checkAudioState);
+window.addEventListener("touchstart", checkAudioState);
+window.addEventListener("touchend", checkAudioState);
+
+document.getElementById('tempoSlider').addEventListener('input', (e) => {
+    document.getElementById("tempoLabel").innerText = `${Math.round(e.target.value * 100)}%`;
+    pitchshifter.tempo = e.target.value;
 });
 
-document.getElementById('pitchSlider').addEventListener('input', function(){
-    pitchshifter.pitch = this.value;
+document.getElementById('pitchSlider').addEventListener('input', (e) => {
+    document.getElementById("pitchLabel").innerText = `${Math.round(e.target.value * 100)}%`;
+    pitchshifter.pitch = e.target.value;
+});
+
+document.getElementById('file').addEventListener('change', (e) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(e.target.files[0]);
+    reader.onload = (loadEvent) => {
+        context.decodeAudioData(loadEvent.target.result, (buf) => {
+            buffer = buf; //buffer must remain a global variable so it doesn't get deleted
+            console.log(buffer);
+            pitchshifter = new PitchShifter(context, buffer, buffer.length);
+            pitchshifter.tempo = 1;
+            pitchshifter.pitch = 1;
+            console.log('Audio ready!');
+            document.getElementById("controls").style = "";
+        });
+    };
 });
